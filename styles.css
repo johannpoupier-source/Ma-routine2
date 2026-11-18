@@ -195,6 +195,62 @@ main { flex: 1; padding: 4px 16px 120px; }
 }
 .icon-btn:active { transform: scale(0.93); }
 
+/* ===== Vue semaine ===== */
+
+.week-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.wk-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 1.15fr) repeat(7, 1fr);
+  align-items: stretch;
+}
+.wk-row + .wk-row { border-top: 1px solid var(--border); }
+.wk-header { background: var(--surface-2); }
+.wk-head-cell {
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  padding: 8px 0;
+  line-height: 1.4;
+  border-left: 1px solid var(--border);
+}
+.wk-head-cell.name-col { border-left: none; text-align: left; padding-left: 10px; }
+.wk-head-cell.today { color: var(--accent); font-weight: 700; }
+.wk-name {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+.wk-name .nm { font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-name .cnt { font-size: 0.66rem; color: var(--text-dim); }
+.wk-cell {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-left: 1px solid var(--border);
+  padding: 6px 0;
+}
+.wk-cell .cell-dot {
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  transition: transform 0.12s ease;
+}
+.wk-cell.on .cell-dot { background: var(--habit-color); border-color: var(--habit-color); }
+.wk-cell.planned .cell-dot { opacity: 0.45; }
+.wk-cell:active .cell-dot { transform: scale(0.85); }
+.wk-help { color: var(--text-dim); font-size: 0.75rem; line-height: 1.5; margin-top: 12px; }
+
+.habit-card.planned .check-circle { opacity: 0.55; }
+
 /* ===== Stats ===== */
 
 .stats-grid {

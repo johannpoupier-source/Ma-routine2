@@ -18,6 +18,7 @@
   let checks = load(CHECKS_KEY, {});
   let view = 'today';
   let selectedDate = todayKey();
+  let weekStart = mondayOf(todayKey());
   let editingId = null;
   let draftEmoji = EMOJIS[0];
   let draftColor = COLORS[0];
@@ -74,7 +75,15 @@
     if (key === todayKey()) return "Aujourd'hui";
     if (key === shiftKey(todayKey(), -1)) return 'Hier';
     if (key === shiftKey(todayKey(), -2)) return 'Avant-hier';
+    if (key === shiftKey(todayKey(), 1)) return 'Demain';
+    if (key === shiftKey(todayKey(), 2)) return 'Après-demain';
     return fullDate(key);
+  }
+
+  function mondayOf(key) {
+    const d = keyToDate(key);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return dateKey(d);
   }
 
   function esc(str) {
@@ -131,19 +140,75 @@
   /* ===== Rendu ===== */
 
   function render() {
-    const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', stats: 'Statistiques' };
+    const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', week: 'Ma semaine', stats: 'Statistiques' };
     if (view === 'today' && selectedDate !== todayKey()) viewTitle.textContent = dayLabel(selectedDate);
     else viewTitle.textContent = titles[view];
 
-    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate) : '';
+    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate)
+      : view === 'week' ? `du ${fullDate(weekStart)} au ${fullDate(shiftKey(weekStart, 6))}`
+      : '';
 
     if (view === 'today') renderToday();
     else if (view === 'habits') renderManage();
+    else if (view === 'week') renderWeek();
     else renderStats();
 
     document.querySelectorAll('.tab').forEach((t) => {
       t.classList.toggle('active', t.dataset.view === view);
     });
+  }
+
+  function renderWeek() {
+    if (habits.length === 0) {
+      main.innerHTML = `
+        <div class="empty-state">
+          <div class="big">🗓️</div>
+          <h2>Planifiez votre semaine</h2>
+          <p>Créez d'abord des habitudes dans l'onglet <strong>Habitudes</strong>, puis cochez ici vos journées, même à venir.</p>
+        </div>`;
+      return;
+    }
+    const days = [];
+    for (let i = 0; i < 7; i += 1) days.push(shiftKey(weekStart, i));
+
+    const headCells = days.map((k) => {
+      const d = keyToDate(k);
+      const isToday = k === todayKey();
+      return `<div class="wk-head-cell ${isToday ? 'today' : ''}">${DAYS_FR[d.getDay()]}<br>${d.getDate()}</div>`;
+    }).join('');
+
+    const rows = habits.map((h) => {
+      const count = days.filter((k) => isChecked(h.id, k)).length;
+      const cells = days.map((k) => {
+        const on = isChecked(h.id, k);
+        const planned = on && k > todayKey();
+        return `<div class="wk-cell ${on ? 'on' : ''} ${planned ? 'planned' : ''}" data-h="${h.id}" data-d="${k}" role="button" aria-label="${esc(h.name)} le ${fullDate(k)}"></div>`;
+      }).join('');
+      return `
+      <div class="wk-row" style="--habit-color:${h.color}">
+        <div class="wk-name">
+          <span class="nm">${h.emoji} ${esc(h.name)}</span>
+          <span class="cnt">${count}/7</span>
+        </div>
+        ${cells}
+      </div>`;
+    }).join('');
+
+    const isCurrent = weekStart === mondayOf(todayKey());
+    main.innerHTML = `
+      <div class="date-nav">
+        <button type="button" class="date-btn" data-week-prev="1" aria-label="Semaine précédente">‹</button>
+        <span class="date-label" data-week-today="1">${isCurrent ? 'Cette semaine' : dayLabel(weekStart)}</span>
+        <button type="button" class="date-btn" data-week-next="1" aria-label="Semaine suivante">›</button>
+      </div>
+      <div class="week-table">
+        <div class="wk-row wk-header">
+          <div class="wk-head-cell name-col">Habitude</div>
+          ${headCells}
+        </div>
+        ${rows}
+      </div>
+      <p class="wk-help">Touchez une case pour cocher ou décocher le jour correspondant — y compris les jours à venir. Touchez le titre pour revenir à la semaine actuelle.</p>`;
   }
 
   function renderToday() {
@@ -158,24 +223,25 @@
     }
     const done = habits.filter((h) => isChecked(h.id, selectedDate)).length;
     const pct = Math.round((done / habits.length) * 100);
-    const isToday = selectedDate === todayKey();
+    const isFuture = selectedDate > todayKey();
     const nav = `
       <div class="date-nav">
         <button type="button" class="date-btn" data-date-prev="1" aria-label="Jour précédent">‹</button>
-        <span class="date-label">${dayLabel(selectedDate)}</span>
-        <button type="button" class="date-btn" data-date-next="1" ${isToday ? 'disabled' : ''} aria-label="Jour suivant">›</button>
+        <span class="date-label" data-date-label="1" title="Revenir à aujourd'hui">${dayLabel(selectedDate)}</span>
+        <button type="button" class="date-btn" data-date-next="1" aria-label="Jour suivant">›</button>
       </div>`;
     const cards = habits.map((h) => {
       const checked = isChecked(h.id, selectedDate);
       const streak = streakOf(h.id, selectedDate);
+      const meta = isFuture
+        ? `<span class="streak-flame">🗓️ planifié à l'avance</span>`
+        : `<span class="streak-flame">🔥 ${streak} jour${streak > 1 ? 's' : ''}</span>`;
       return `
-        <div class="habit-card ${checked ? 'done' : ''}" data-id="${h.id}" style="--habit-color:${h.color}">
+        <div class="habit-card ${checked ? 'done' : ''} ${checked && isFuture ? 'planned' : ''}" data-id="${h.id}" style="--habit-color:${h.color}">
           <div class="check-circle">${checked ? '✓' : h.emoji}</div>
           <div class="habit-info">
             <div class="habit-name"><span class="habit-emoji">${h.emoji}</span>${esc(h.name)}</div>
-            <div class="habit-meta">
-              <span class="streak-flame">🔥 ${streak} jour${streak > 1 ? 's' : ''}</span>
-            </div>
+            <div class="habit-meta">${meta}</div>
           </div>
         </div>`;
     }).join('');
@@ -354,6 +420,12 @@
   });
 
   main.addEventListener('click', (e) => {
+    const cell = e.target.closest('.wk-cell');
+    if (cell) {
+      toggle(cell.dataset.h, cell.dataset.d);
+      render();
+      return;
+    }
     if (e.target.closest('[data-date-prev]')) {
       selectedDate = shiftKey(selectedDate, -1);
       render();
@@ -361,7 +433,26 @@
     }
     if (e.target.closest('[data-date-next]')) {
       selectedDate = shiftKey(selectedDate, 1);
-      if (selectedDate > todayKey()) selectedDate = todayKey();
+      render();
+      return;
+    }
+    if (e.target.closest('[data-date-label]')) {
+      selectedDate = todayKey();
+      render();
+      return;
+    }
+    if (e.target.closest('[data-week-prev]')) {
+      weekStart = shiftKey(weekStart, -7);
+      render();
+      return;
+    }
+    if (e.target.closest('[data-week-next]')) {
+      weekStart = shiftKey(weekStart, 7);
+      render();
+      return;
+    }
+    if (e.target.closest('[data-week-today]')) {
+      weekStart = mondayOf(todayKey());
       render();
       return;
     }
