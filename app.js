@@ -3,6 +3,7 @@
 
   const HABITS_KEY = 'ma-routine-habits';
   const CHECKS_KEY = 'ma-routine-checks';
+  const WEEK_MODES_KEY = 'ma-routine-week-modes';
   const SUNDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
 
   const DAYS_FR = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
@@ -16,6 +17,7 @@
 
   let habits = load(HABITS_KEY, []);
   let checks = load(CHECKS_KEY, {});
+  let weekModes = load(WEEK_MODES_KEY, {});
   let view = 'today';
   let selectedDate = todayKey();
   let weekStart = mondayOf(todayKey());
@@ -47,6 +49,7 @@
   function save() {
     localStorage.setItem(HABITS_KEY, JSON.stringify(habits));
     localStorage.setItem(CHECKS_KEY, JSON.stringify(checks));
+    localStorage.setItem(WEEK_MODES_KEY, JSON.stringify(weekModes));
   }
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -142,11 +145,10 @@
   function render() {
     const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', week: 'Ma semaine', stats: 'Statistiques' };
     if (view === 'today' && selectedDate !== todayKey()) viewTitle.textContent = dayLabel(selectedDate);
+    else if (view === 'week' && weekModes[weekStart]) viewTitle.textContent = weekModes[weekStart] === 'avec' ? 'Avec les enfants' : 'Sans les enfants';
     else viewTitle.textContent = titles[view];
 
-    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate)
-      : view === 'week' ? `du ${fullDate(weekStart)} au ${fullDate(shiftKey(weekStart, 6))}`
-      : '';
+    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate) : '';
 
     if (view === 'today') renderToday();
     else if (view === 'habits') renderManage();
@@ -194,11 +196,15 @@
       </div>`;
     }).join('');
 
+    const phase = weekModes[weekStart];
+    const mid = phase
+      ? `<button type="button" class="phase-badge ${phase}" data-phase-toggle="1">${phase === 'avec' ? 'Avec les enfants' : 'Sans les enfants'}</button>`
+      : `<button type="button" class="phase-badge none" data-phase-toggle="1">Ce sera… avec ou sans ?</button>`;
     const isCurrent = weekStart === mondayOf(todayKey());
     main.innerHTML = `
       <div class="date-nav">
         <button type="button" class="date-btn" data-week-prev="1" aria-label="Semaine précédente">‹</button>
-        <span class="date-label" data-week-today="1">${isCurrent ? 'Cette semaine' : dayLabel(weekStart)}</span>
+        ${mid}
         <button type="button" class="date-btn" data-week-next="1" aria-label="Semaine suivante">›</button>
       </div>
       <div class="week-table">
@@ -208,7 +214,8 @@
         </div>
         ${rows}
       </div>
-      <p class="wk-help">Touchez une case pour cocher ou décocher le jour correspondant — y compris les jours à venir. Touchez le titre pour revenir à la semaine actuelle.</p>`;
+      <p class="wk-help">Touchez une case pour cocher ou décocher le jour correspondant, même à venir. Touchez le bandeau pour basculer la semaine : ${phase ? 'Avec ↔ Sans les enfants' : 'elle devient « Avec » puis « Sans » les enfants'}.</p>
+      ${isCurrent ? '' : `<button type="button" class="wk-return" data-week-today="1">↩ Revenir à la semaine actuelle</button>`}`;
   }
 
   function renderToday() {
@@ -453,6 +460,16 @@
     }
     if (e.target.closest('[data-week-today]')) {
       weekStart = mondayOf(todayKey());
+      render();
+      return;
+    }
+    if (e.target.closest('[data-phase-toggle]')) {
+      const order = [null, 'avec', 'sans'];
+      const idx = order.indexOf(weekModes[weekStart] || null);
+      const next = order[(idx + 1) % order.length];
+      if (next) weekModes[weekStart] = next;
+      else delete weekModes[weekStart];
+      save();
       render();
       return;
     }
