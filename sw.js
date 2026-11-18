@@ -1,9 +1,9 @@
-const CACHE = 'ma-routine-v7';
+const CACHE = 'ma-routine-v8';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
+  './styles.css?v=8',
+  './app.js?v=8',
   './manifest.webmanifest',
   './icons/icon-192.svg',
 ];
