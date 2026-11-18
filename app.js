@@ -3,7 +3,7 @@
 
   const HABITS_KEY = 'ma-routine-habits';
   const CHECKS_KEY = 'ma-routine-checks';
-  const WEEK_MODES_KEY = 'ma-routine-week-modes';
+  const PLAN_KEY = 'ma-routine-plan';
   const SUNDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
 
   const DAYS_FR = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
@@ -17,10 +17,10 @@
 
   let habits = load(HABITS_KEY, []);
   let checks = load(CHECKS_KEY, {});
-  let weekModes = load(WEEK_MODES_KEY, {});
+  let plan = load(PLAN_KEY, { avec: {}, sans: {} });
+  let weekMode = 'avec';
   let view = 'today';
   let selectedDate = todayKey();
-  let weekStart = mondayOf(todayKey());
   let editingId = null;
   let draftEmoji = EMOJIS[0];
   let draftColor = COLORS[0];
@@ -49,7 +49,7 @@
   function save() {
     localStorage.setItem(HABITS_KEY, JSON.stringify(habits));
     localStorage.setItem(CHECKS_KEY, JSON.stringify(checks));
-    localStorage.setItem(WEEK_MODES_KEY, JSON.stringify(weekModes));
+    localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
   }
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -83,11 +83,7 @@
     return fullDate(key);
   }
 
-  function mondayOf(key) {
-    const d = keyToDate(key);
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return dateKey(d);
-  }
+  const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
   function esc(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({
@@ -145,7 +141,7 @@
   function render() {
     const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', week: 'Ma semaine', stats: 'Statistiques' };
     if (view === 'today' && selectedDate !== todayKey()) viewTitle.textContent = dayLabel(selectedDate);
-    else if (view === 'week' && weekModes[weekStart]) viewTitle.textContent = weekModes[weekStart] === 'avec' ? 'Avec les enfants' : 'Sans les enfants';
+    else if (view === 'week') viewTitle.textContent = weekMode === 'avec' ? 'Semaine avec enfants' : 'Semaine sans enfants';
     else viewTitle.textContent = titles[view];
 
     viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate) : '';
@@ -166,25 +162,19 @@
         <div class="empty-state">
           <div class="big">🗓️</div>
           <h2>Planifiez votre semaine</h2>
-          <p>Créez d'abord des habitudes dans l'onglet <strong>Habitudes</strong>, puis cochez ici vos journées, même à venir.</p>
+          <p>Créez d'abord des habitudes dans l'onglet <strong>Habitudes</strong>, puis composez ici vos journées types.</p>
         </div>`;
       return;
     }
-    const days = [];
-    for (let i = 0; i < 7; i += 1) days.push(shiftKey(weekStart, i));
-
-    const headCells = days.map((k) => {
-      const d = keyToDate(k);
-      const isToday = k === todayKey();
-      return `<div class="wk-head-cell ${isToday ? 'today' : ''}">${DAYS_FR[d.getDay()]}<br>${d.getDate()}</div>`;
-    }).join('');
+    const modePlan = plan[weekMode] || {};
+    const headCells = WEEK_DAYS.map((d) =>
+      `<div class="wk-head-cell">${DAYS_FR[d]}</div>`).join('');
 
     const rows = habits.map((h) => {
-      const count = days.filter((k) => isChecked(h.id, k)).length;
-      const cells = days.map((k) => {
-        const on = isChecked(h.id, k);
-        const planned = on && k > todayKey();
-        return `<div class="wk-cell ${on ? 'on' : ''} ${planned ? 'planned' : ''}" data-h="${h.id}" data-d="${k}" role="button" aria-label="${esc(h.name)} le ${fullDate(k)}"></div>`;
+      const count = WEEK_DAYS.filter((d) => modePlan[d] && modePlan[d][h.id]).length;
+      const cells = WEEK_DAYS.map((d) => {
+        const on = Boolean(modePlan[d] && modePlan[d][h.id]);
+        return `<div class="wk-cell ${on ? 'on' : ''}" data-h="${h.id}" data-d="${d}" data-m="${weekMode}" role="button" aria-label="${esc(h.name)} le ${DAYS_FR[d]}"></div>`;
       }).join('');
       return `
       <div class="wk-row" style="--habit-color:${h.color}">
@@ -196,16 +186,10 @@
       </div>`;
     }).join('');
 
-    const phase = weekModes[weekStart];
-    const mid = phase
-      ? `<button type="button" class="phase-badge ${phase}" data-phase-toggle="1">${phase === 'avec' ? 'Avec les enfants' : 'Sans les enfants'}</button>`
-      : `<button type="button" class="phase-badge none" data-phase-toggle="1">Ce sera… avec ou sans ?</button>`;
-    const isCurrent = weekStart === mondayOf(todayKey());
     main.innerHTML = `
-      <div class="date-nav">
-        <button type="button" class="date-btn" data-week-prev="1" aria-label="Semaine précédente">‹</button>
-        ${mid}
-        <button type="button" class="date-btn" data-week-next="1" aria-label="Semaine suivante">›</button>
+      <div class="seg">
+        <button type="button" class="seg-btn ${weekMode === 'avec' ? 'active' : ''}" data-week-mode="avec">Avec les enfants</button>
+        <button type="button" class="seg-btn ${weekMode === 'sans' ? 'active' : ''}" data-week-mode="sans">Sans les enfants</button>
       </div>
       <div class="week-table">
         <div class="wk-row wk-header">
@@ -214,8 +198,7 @@
         </div>
         ${rows}
       </div>
-      <p class="wk-help">Touchez une case pour cocher ou décocher le jour correspondant, même à venir. Touchez le bandeau pour basculer la semaine : ${phase ? 'Avec ↔ Sans les enfants' : 'elle devient « Avec » puis « Sans » les enfants'}.</p>
-      ${isCurrent ? '' : `<button type="button" class="wk-return" data-week-today="1">↩ Revenir à la semaine actuelle</button>`}`;
+      <p class="wk-help">Touchez une case pour placer cette habitude dans la journée (recto = programmée). Ce planning s'applique à toutes les semaines ${weekMode === 'avec' ? 'avec' : 'sans'} les enfants, sans date ni calendrier.</p>`;
   }
 
   function renderToday() {
@@ -429,7 +412,17 @@
   main.addEventListener('click', (e) => {
     const cell = e.target.closest('.wk-cell');
     if (cell) {
-      toggle(cell.dataset.h, cell.dataset.d);
+      const mode = cell.dataset.m || weekMode;
+      const day = cell.dataset.d;
+      if (!plan[mode]) plan[mode] = {};
+      if (!plan[mode][day]) plan[mode][day] = {};
+      if (plan[mode][day][cell.dataset.h]) {
+        delete plan[mode][day][cell.dataset.h];
+        if (Object.keys(plan[mode][day]).length === 0) delete plan[mode][day];
+      } else {
+        plan[mode][day][cell.dataset.h] = 1;
+      }
+      save();
       render();
       return;
     }
@@ -448,28 +441,9 @@
       render();
       return;
     }
-    if (e.target.closest('[data-week-prev]')) {
-      weekStart = shiftKey(weekStart, -7);
-      render();
-      return;
-    }
-    if (e.target.closest('[data-week-next]')) {
-      weekStart = shiftKey(weekStart, 7);
-      render();
-      return;
-    }
-    if (e.target.closest('[data-week-today]')) {
-      weekStart = mondayOf(todayKey());
-      render();
-      return;
-    }
-    if (e.target.closest('[data-phase-toggle]')) {
-      const order = [null, 'avec', 'sans'];
-      const idx = order.indexOf(weekModes[weekStart] || null);
-      const next = order[(idx + 1) % order.length];
-      if (next) weekModes[weekStart] = next;
-      else delete weekModes[weekStart];
-      save();
+    const segBtn = e.target.closest('[data-week-mode]');
+    if (segBtn) {
+      weekMode = segBtn.dataset.weekMode;
       render();
       return;
     }
