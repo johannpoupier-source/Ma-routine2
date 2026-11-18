@@ -129,31 +129,6 @@ main { flex: 1; padding: 4px 16px 120px; }
 
 /* ===== Barre de progression ===== */
 
-.date-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin: 2px 2px 16px;
-}
-.date-nav .date-label { font-weight: 600; font-size: 0.95rem; }
-.date-btn {
-  width: 38px; height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 1.3rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.date-btn:disabled { opacity: 0.35; cursor: default; }
-.date-btn:not(:disabled):active { transform: scale(0.93); }
-
 .progress-wrap { margin: 6px 2px 18px; }
 .progress-label { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 7px; }
 .progress-bar {
@@ -245,7 +220,6 @@ main { flex: 1; padding: 4px 16px 120px; }
   transition: transform 0.12s ease;
 }
 .wk-cell.on .cell-dot { background: var(--habit-color); border-color: var(--habit-color); }
-.wk-cell.planned .cell-dot { opacity: 0.45; }
 .wk-cell:active .cell-dot { transform: scale(0.85); }
 .wk-help { color: var(--text-dim); font-size: 0.75rem; line-height: 1.5; margin-top: 12px; }
 
@@ -276,7 +250,6 @@ main { flex: 1; padding: 4px 16px 120px; }
 .seg-btn[data-week-mode="sans"].active { background: rgba(77, 184, 255, 0.18); color: #3ba1ee; }
 .seg-btn:active { transform: scale(0.97); }
 
-.habit-card.planned .check-circle { opacity: 0.55; }
 
 /* ===== Stats ===== */
 

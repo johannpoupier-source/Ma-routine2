@@ -7,10 +7,6 @@
   const SUNDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
 
   const DAYS_FR = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
-  const MONTHS_FR = [
-    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-  ];
 
   const EMOJIS = ['📚', '🏃', '💧', '🧘', '💪', '🥗', '😴', '✍️', '🎸', '🧹', '💊', '🌞'];
   const COLORS = ['#7c5cfc', '#4dd9a6', '#ff9f43', '#ff6b7a', '#4db8ff', '#f472b6'];
@@ -20,7 +16,6 @@
   let plan = load(PLAN_KEY, { avec: {}, sans: {} });
   let weekMode = 'avec';
   let view = 'today';
-  let selectedDate = todayKey();
   let editingId = null;
   let draftEmoji = EMOJIS[0];
   let draftColor = COLORS[0];
@@ -61,26 +56,6 @@
   function keyToDate(key) {
     const [y, m, d] = key.split('-').map(Number);
     return new Date(y, m - 1, d);
-  }
-
-  function shiftKey(key, days) {
-    const d = keyToDate(key);
-    d.setDate(d.getDate() + days);
-    return dateKey(d);
-  }
-
-  function fullDate(key) {
-    const d = keyToDate(key);
-    return `${DAYS_FR[d.getDay()].replace(/^./, (c) => c.toUpperCase())} ${d.getDate()} ${MONTHS_FR[d.getMonth()]}`;
-  }
-
-  function dayLabel(key) {
-    if (key === todayKey()) return "Aujourd'hui";
-    if (key === shiftKey(todayKey(), -1)) return 'Hier';
-    if (key === shiftKey(todayKey(), -2)) return 'Avant-hier';
-    if (key === shiftKey(todayKey(), 1)) return 'Demain';
-    if (key === shiftKey(todayKey(), 2)) return 'Après-demain';
-    return fullDate(key);
   }
 
   const WEEK_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -140,11 +115,10 @@
 
   function render() {
     const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', week: 'Ma semaine', stats: 'Statistiques' };
-    if (view === 'today' && selectedDate !== todayKey()) viewTitle.textContent = dayLabel(selectedDate);
-    else if (view === 'week') viewTitle.textContent = weekMode === 'avec' ? 'Semaine avec enfants' : 'Semaine sans enfants';
+    if (view === 'week') viewTitle.textContent = weekMode === 'avec' ? 'Semaine avec enfants' : 'Semaine sans enfants';
     else viewTitle.textContent = titles[view];
 
-    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate) : '';
+    viewSubtitle.textContent = '';
 
     if (view === 'today') renderToday();
     else if (view === 'habits') renderManage();
@@ -211,23 +185,14 @@
         </div>`;
       return;
     }
-    const done = habits.filter((h) => isChecked(h.id, selectedDate)).length;
+    const done = habits.filter((h) => isChecked(h.id, todayKey())).length;
     const pct = Math.round((done / habits.length) * 100);
-    const isFuture = selectedDate > todayKey();
-    const nav = `
-      <div class="date-nav">
-        <button type="button" class="date-btn" data-date-prev="1" aria-label="Jour précédent">‹</button>
-        <span class="date-label" data-date-label="1" title="Revenir à aujourd'hui">${dayLabel(selectedDate)}</span>
-        <button type="button" class="date-btn" data-date-next="1" aria-label="Jour suivant">›</button>
-      </div>`;
     const cards = habits.map((h) => {
-      const checked = isChecked(h.id, selectedDate);
-      const streak = streakOf(h.id, selectedDate);
-      const meta = isFuture
-        ? `<span class="streak-flame">🗓️ planifié à l'avance</span>`
-        : `<span class="streak-flame">🔥 ${streak} jour${streak > 1 ? 's' : ''}</span>`;
+      const checked = isChecked(h.id, todayKey());
+      const streak = streakOf(h.id);
+      const meta = `<span class="streak-flame">🔥 ${streak} jour${streak > 1 ? 's' : ''}</span>`;
       return `
-        <div class="habit-card ${checked ? 'done' : ''} ${checked && isFuture ? 'planned' : ''}" data-id="${h.id}" style="--habit-color:${h.color}">
+        <div class="habit-card ${checked ? 'done' : ''}" data-id="${h.id}" style="--habit-color:${h.color}">
           <div class="check-circle">${checked ? '✓' : h.emoji}</div>
           <div class="habit-info">
             <div class="habit-name"><span class="habit-emoji">${h.emoji}</span>${esc(h.name)}</div>
@@ -235,7 +200,7 @@
           </div>
         </div>`;
     }).join('');
-    main.innerHTML = `${nav}
+    main.innerHTML = `
       <div class="progress-wrap">
         <div class="progress-label">${done} / ${habits.length} habitude${habits.length > 1 ? 's' : ''} complétée${done > 1 ? 's' : ''} · ${pct}%</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
@@ -253,21 +218,26 @@
         </div>`;
       return;
     }
-    main.innerHTML = habits.map((h) => `
+    main.innerHTML = habits.map((h) => {
+      const streak = streakOf(h.id);
+      const planned = WEEK_DAYS.filter((d) =>
+        (plan.avec[d] && plan.avec[d][h.id]) || (plan.sans[d] && plan.sans[d][h.id])).length;
+      return `
       <div class="manage-card">
         <div class="swatch" style="background:${h.color}"></div>
         <div class="habit-info">
           <div class="habit-name"><span class="habit-emoji">${h.emoji}</span>${esc(h.name)}</div>
           <div class="habit-meta">
-            <span class="streak-flame">🔥 ${streakOf(h.id)}</span> ·
-            <span>créée le ${h.createdAt.slice(8, 10)}/${h.createdAt.slice(5, 7)}/${h.createdAt.slice(0, 4)}</span>
+            <span class="streak-flame">🔥 ${streak} jour${streak > 1 ? 's' : ''}</span>
+            <span>${planned} jour${planned > 1 ? 's' : ''} par semaine</span>
           </div>
         </div>
         <div class="manage-actions">
           <button class="icon-btn" data-edit="${h.id}" aria-label="Modifier">✏️</button>
           <button class="icon-btn" data-del="${h.id}" aria-label="Supprimer">🗑️</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function renderStats() {
@@ -426,21 +396,6 @@
       render();
       return;
     }
-    if (e.target.closest('[data-date-prev]')) {
-      selectedDate = shiftKey(selectedDate, -1);
-      render();
-      return;
-    }
-    if (e.target.closest('[data-date-next]')) {
-      selectedDate = shiftKey(selectedDate, 1);
-      render();
-      return;
-    }
-    if (e.target.closest('[data-date-label]')) {
-      selectedDate = todayKey();
-      render();
-      return;
-    }
     const segBtn = e.target.closest('[data-week-mode]');
     if (segBtn) {
       weekMode = segBtn.dataset.weekMode;
@@ -465,7 +420,7 @@
     }
     const card = e.target.closest('.habit-card');
     if (card) {
-      toggle(card.dataset.id, selectedDate);
+      toggle(card.dataset.id, todayKey());
       render();
     }
   });

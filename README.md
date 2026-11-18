@@ -5,8 +5,7 @@ Application mobile-first de suivi d'habitudes, en français, 100 % stockage loca
 
 ## Fonctionnalités
 
-- **Aujourd'hui** : cochez vos habitudes du jour, barre de progression et série (streak 🔥)
-- **Navigation par jour** : flèches ‹ › pour consulter et modifier les habitudes de n'importe quel jour, passé ou futur (planification à l'avance, cases en transparence) ; le titre ramène à Aujourd'hui
+- **Aujourd'hui** : cochez vos habitudes du jour, barre de progression et série (streak 🔥) — aucune date affichée
 - **Planning hebdomadaire sans dates** 🗓️ : deux modèles de semaine — « Avec les enfants » et « Sans les enfants » — où l'on place ses habitudes sur les jours de la semaine (lundi→dimanche) ; les modèles s'appliquent à toutes les semaines du même type
 - **Habitudes** : créer, modifier ou supprimer des habitudes (nom, emoji, couleur)
 - **Stats** : meilleure série, taux de complétion sur 30 jours, vue des 7 derniers jours
