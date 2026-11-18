@@ -148,7 +148,7 @@
       const count = WEEK_DAYS.filter((d) => modePlan[d] && modePlan[d][h.id]).length;
       const cells = WEEK_DAYS.map((d) => {
         const on = Boolean(modePlan[d] && modePlan[d][h.id]);
-        return `<div class="wk-cell ${on ? 'on' : ''}" data-h="${h.id}" data-d="${d}" data-m="${weekMode}" role="button" aria-label="${esc(h.name)} le ${DAYS_FR[d]}"></div>`;
+        return `<div class="wk-cell ${on ? 'on' : ''}" data-h="${h.id}" data-d="${d}" data-m="${weekMode}" role="button" aria-label="${esc(h.name)} le ${DAYS_FR[d]}"><span class="cell-dot">${on ? '✓' : ''}</span></div>`;
       }).join('');
       return `
       <div class="wk-row" style="--habit-color:${h.color}">
