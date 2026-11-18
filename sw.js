@@ -1,4 +1,4 @@
-const CACHE = 'ma-routine-v1';
+const CACHE = 'ma-routine-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -6,8 +6,6 @@ const ASSETS = [
   './app.js',
   './manifest.webmanifest',
   './icons/icon-192.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

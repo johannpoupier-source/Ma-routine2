@@ -17,6 +17,7 @@
   let habits = load(HABITS_KEY, []);
   let checks = load(CHECKS_KEY, {});
   let view = 'today';
+  let selectedDate = todayKey();
   let editingId = null;
   let draftEmoji = EMOJIS[0];
   let draftColor = COLORS[0];
@@ -53,6 +54,29 @@
 
   function todayKey() { return dateKey(new Date()); }
 
+  function keyToDate(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function shiftKey(key, days) {
+    const d = keyToDate(key);
+    d.setDate(d.getDate() + days);
+    return dateKey(d);
+  }
+
+  function fullDate(key) {
+    const d = keyToDate(key);
+    return `${DAYS_FR[d.getDay()].replace(/^./, (c) => c.toUpperCase())} ${d.getDate()} ${MONTHS_FR[d.getMonth()]}`;
+  }
+
+  function dayLabel(key) {
+    if (key === todayKey()) return "Aujourd'hui";
+    if (key === shiftKey(todayKey(), -1)) return 'Hier';
+    if (key === shiftKey(todayKey(), -2)) return 'Avant-hier';
+    return fullDate(key);
+  }
+
   function esc(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -74,8 +98,8 @@
     save();
   }
 
-  function streakOf(habitId) {
-    const d = new Date();
+  function streakOf(habitId, refKey = todayKey()) {
+    const d = keyToDate(refKey);
     let streak = 0;
     if (!isChecked(habitId, dateKey(d))) d.setDate(d.getDate() - 1);
     while (isChecked(habitId, dateKey(d))) {
@@ -108,11 +132,10 @@
 
   function render() {
     const titles = { today: "Aujourd'hui", habits: 'Mes habitudes', stats: 'Statistiques' };
-    viewTitle.textContent = titles[view];
+    if (view === 'today' && selectedDate !== todayKey()) viewTitle.textContent = dayLabel(selectedDate);
+    else viewTitle.textContent = titles[view];
 
-    const now = new Date();
-    const dateStr = `${DAYS_FR[now.getDay()].replace(/^./, (c) => c.toUpperCase())} ${now.getDate()} ${MONTHS_FR[now.getMonth()]}`;
-    viewSubtitle.textContent = view === 'today' ? dateStr : '';
+    viewSubtitle.textContent = view === 'today' ? fullDate(selectedDate) : '';
 
     if (view === 'today') renderToday();
     else if (view === 'habits') renderManage();
@@ -133,11 +156,18 @@
         </div>`;
       return;
     }
-    const done = todayDoneCount();
+    const done = habits.filter((h) => isChecked(h.id, selectedDate)).length;
     const pct = Math.round((done / habits.length) * 100);
+    const isToday = selectedDate === todayKey();
+    const nav = `
+      <div class="date-nav">
+        <button type="button" class="date-btn" data-date-prev="1" aria-label="Jour précédent">‹</button>
+        <span class="date-label">${dayLabel(selectedDate)}</span>
+        <button type="button" class="date-btn" data-date-next="1" ${isToday ? 'disabled' : ''} aria-label="Jour suivant">›</button>
+      </div>`;
     const cards = habits.map((h) => {
-      const checked = isChecked(h.id, todayKey());
-      const streak = streakOf(h.id);
+      const checked = isChecked(h.id, selectedDate);
+      const streak = streakOf(h.id, selectedDate);
       return `
         <div class="habit-card ${checked ? 'done' : ''}" data-id="${h.id}" style="--habit-color:${h.color}">
           <div class="check-circle">${checked ? '✓' : h.emoji}</div>
@@ -149,7 +179,7 @@
           </div>
         </div>`;
     }).join('');
-    main.innerHTML = `
+    main.innerHTML = `${nav}
       <div class="progress-wrap">
         <div class="progress-label">${done} / ${habits.length} habitude${habits.length > 1 ? 's' : ''} complétée${done > 1 ? 's' : ''} · ${pct}%</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
@@ -324,6 +354,17 @@
   });
 
   main.addEventListener('click', (e) => {
+    if (e.target.closest('[data-date-prev]')) {
+      selectedDate = shiftKey(selectedDate, -1);
+      render();
+      return;
+    }
+    if (e.target.closest('[data-date-next]')) {
+      selectedDate = shiftKey(selectedDate, 1);
+      if (selectedDate > todayKey()) selectedDate = todayKey();
+      render();
+      return;
+    }
     const editBtn = e.target.closest('[data-edit]');
     if (editBtn) {
       openDialog(habits.find((h) => h.id === editBtn.dataset.edit));
@@ -342,7 +383,7 @@
     }
     const card = e.target.closest('.habit-card');
     if (card) {
-      toggle(card.dataset.id, todayKey());
+      toggle(card.dataset.id, selectedDate);
       render();
     }
   });

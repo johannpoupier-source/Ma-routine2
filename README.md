@@ -6,6 +6,7 @@ Application mobile-first de suivi d'habitudes, en français, 100 % stockage loca
 ## Fonctionnalités
 
 - **Aujourd'hui** : cochez vos habitudes du jour, barre de progression et série (streak 🔥)
+- **Navigation par jour** : flèches ‹ › pour consulter et modifier les habitudes des jours précédents (Aujourd'hui / Hier / Avant-hier / dates) ; l'avenir reste verrouillé
 - **Habitudes** : créer, modifier ou supprimer des habitudes (nom, emoji, couleur)
 - **Stats** : meilleure série, taux de complétion sur 30 jours, vue des 7 derniers jours
 - **PWA installable** : ajoutez-la à votre écran d'accueil, elle fonctionne hors ligne
